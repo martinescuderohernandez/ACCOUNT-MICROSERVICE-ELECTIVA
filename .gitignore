@@ -1,0 +1,24 @@
+# Virtual Environment
+mi_entorno/
+venv/
+.venv/
+env/
+
+# Environment Variables & Secrets
+.env
+*.pem
+*.cert
+*.key
+certs/
+
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
