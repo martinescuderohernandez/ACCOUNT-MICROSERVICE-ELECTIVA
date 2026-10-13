@@ -11,7 +11,7 @@ class Account(Base):
 
     id = Column(String(36), primary_key=True, doc="UUID primary key")
     account_number = Column(String(20), unique=True, nullable=False, doc="Unique account number")
-    user_id = Column(String(36), nullable=False, index=True, doc="ID of the account owner")
+    user_id = Column(String(50), nullable=False, index=True, doc="ID of the account owner")
     account_type = Column(String(20), nullable=False, doc="Account type (e.g. SAVINGS, CHECKING)")
     balance = Column(Numeric(15, 2), nullable=False, default=Decimal("0.00"), doc="Current balance")
     currency = Column(String(3), nullable=False, default="COP", doc="Currency code (e.g. COP, USD)")

@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Path, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -37,9 +37,9 @@ def create_account(
         id=account_id,
         account_number=account_number,
         user_id=payload.user_id,
-        account_type=payload.account_type.upper(),
+        account_type=payload.account_type,
         balance=payload.balance,
-        currency=payload.currency.upper(),
+        currency=payload.currency,
         status="ACTIVE",
         created_at=now,
         updated_at=now
@@ -99,7 +99,10 @@ def create_account(
     response_model=AccountResponse,
     summary="Obtener cuenta por ID"
 )
-def get_account_by_id(account_id: str, db: Session = Depends(get_db)):
+def get_account_by_id(
+    account_id: str = Path(..., min_length=1, max_length=50, description="ID único de la cuenta"),
+    db: Session = Depends(get_db)
+):
     account = db.query(Account).filter(Account.id == account_id).first()
     if not account:
         raise HTTPException(
@@ -115,12 +118,12 @@ def get_account_by_id(account_id: str, db: Session = Depends(get_db)):
     summary="Listar cuentas"
 )
 def list_accounts(
-    user_id: str = None,
-    limit: int = 50,
-    offset: int = 0,
+    user_id: Optional[str] = Query(None, min_length=1, max_length=50, description="Filtrar por ID del usuario"),
+    limit: int = Query(50, ge=1, le=100, description="Número máximo de cuentas a retornar (1 a 100)"),
+    offset: int = Query(0, ge=0, description="Número de registros a omitir para paginación"),
     db: Session = Depends(get_db)
 ):
     query = db.query(Account)
     if user_id:
-        query = query.filter(Account.user_id == user_id)
+        query = query.filter(Account.user_id == user_id.strip())
     return query.offset(offset).limit(limit).all()

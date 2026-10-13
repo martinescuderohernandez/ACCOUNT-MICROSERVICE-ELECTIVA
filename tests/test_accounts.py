@@ -116,3 +116,86 @@ def test_get_account_by_id():
     assert get_res.status_code == 200
     assert get_res.json()["id"] == account_id
     assert get_res.json()["user_id"] == "usr-999"
+
+
+def test_create_account_invalid_user_id_empty():
+    payload = {
+        "user_id": "   ",
+        "account_type": "SAVINGS"
+    }
+    response = client.post("/accounts", json=payload)
+    assert response.status_code == 422
+    assert "user_id" in response.text
+
+
+def test_create_account_invalid_account_type():
+    payload = {
+        "user_id": "usr-12345",
+        "account_type": "INVESTMENT"
+    }
+    response = client.post("/accounts", json=payload)
+    assert response.status_code == 422
+    assert "Tipo de cuenta no permitido" in response.text
+
+
+def test_create_account_negative_balance():
+    payload = {
+        "user_id": "usr-12345",
+        "account_type": "SAVINGS",
+        "balance": -50.00
+    }
+    response = client.post("/accounts", json=payload)
+    assert response.status_code == 422
+
+
+def test_create_account_excessive_decimal_places():
+    payload = {
+        "user_id": "usr-12345",
+        "account_type": "SAVINGS",
+        "balance": 150.123
+    }
+    response = client.post("/accounts", json=payload)
+    assert response.status_code == 422
+    assert "cifras decimales" in response.text
+
+
+def test_create_account_invalid_currency():
+    payload = {
+        "user_id": "usr-12345",
+        "account_type": "SAVINGS",
+        "currency": "ABC"
+    }
+    response = client.post("/accounts", json=payload)
+    assert response.status_code == 422
+    assert "Moneda no permitida" in response.text
+
+
+def test_create_account_invalid_email():
+    payload = {
+        "user_id": "usr-12345",
+        "account_type": "SAVINGS",
+        "user_email": "correo-no-valido"
+    }
+    response = client.post("/accounts", json=payload)
+    assert response.status_code == 422
+    assert "formato válido" in response.text
+
+
+def test_create_account_invalid_account_number():
+    payload = {
+        "user_id": "usr-12345",
+        "account_type": "SAVINGS",
+        "account_number": "123"  # Menos de 6 caracteres
+    }
+    response = client.post("/accounts", json=payload)
+    assert response.status_code == 422
+    assert "account_number" in response.text
+
+
+def test_list_accounts_invalid_pagination():
+    response = client.get("/accounts?limit=200")
+    assert response.status_code == 422
+
+    response = client.get("/accounts?offset=-1")
+    assert response.status_code == 422
+
