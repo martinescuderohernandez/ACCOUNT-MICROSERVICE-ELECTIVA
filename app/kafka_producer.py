@@ -1,6 +1,9 @@
+import base64
 import json
 import logging
+import os
 import ssl
+import tempfile
 from typing import Any, Optional
 from aiokafka import AIOKafkaProducer
 from app.config import settings
@@ -13,14 +16,51 @@ class KafkaService:
         self.producer: Optional[AIOKafkaProducer] = None
         self.is_connected: bool = False
 
+    @staticmethod
+    def _resolve_cert(file_path: Optional[str], base64_content: Optional[str], default_filename: str) -> Optional[str]:
+        """
+        Resolves certificate path with fallback logic:
+        1. If configured file_path exists on disk, use it.
+        2. If Render Secret File exists (/etc/secrets/<filename>), use it.
+        3. If Base64 string is provided, decode and save to /tmp/kafka_certs/<filename>.
+        4. Fallback to original file_path.
+        """
+        if file_path and os.path.isfile(file_path):
+            return file_path
+
+        render_path = os.path.join("/etc/secrets", default_filename)
+        if os.path.isfile(render_path):
+            logger.info(f"Using Render Secret File for {default_filename} at {render_path}")
+            return render_path
+
+        if base64_content and base64_content.strip():
+            try:
+                target_dir = os.path.join(tempfile.gettempdir(), "kafka_certs")
+                os.makedirs(target_dir, exist_ok=True)
+                target_file = os.path.join(target_dir, default_filename)
+                decoded_data = base64.b64decode(base64_content.strip())
+                with open(target_file, "wb") as f:
+                    f.write(decoded_data)
+                os.chmod(target_file, 0o600)
+                logger.info(f"Successfully decoded Base64 certificate into {target_file}")
+                return target_file
+            except Exception as e:
+                logger.error(f"Error decoding Base64 certificate for {default_filename}: {e}")
+
+        return file_path
+
     def _create_ssl_context(self) -> Optional[ssl.SSLContext]:
         """Configures SSL context for Aiven Kafka or other secure brokers."""
         if settings.KAFKA_SECURITY_PROTOCOL not in ("SSL", "SASL_SSL"):
             return None
 
+        # Resolve certificates with automatic fallbacks
+        ca_file = self._resolve_cert(settings.KAFKA_SSL_CAFILE, settings.KAFKA_SSL_CA_BASE64, "ca.pem")
+        cert_file = self._resolve_cert(settings.KAFKA_SSL_CERTFILE, settings.KAFKA_SSL_CERT_BASE64, "service.cert")
+        key_file = self._resolve_cert(settings.KAFKA_SSL_KEYFILE, settings.KAFKA_SSL_KEY_BASE64, "service.key")
+
         # Create client SSL context for server authentication
-        ca_file = settings.KAFKA_SSL_CAFILE
-        if ca_file:
+        if ca_file and os.path.isfile(ca_file):
             context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH, cafile=ca_file)
         else:
             context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
@@ -29,14 +69,20 @@ class KafkaService:
         context.check_hostname = False
 
         # Load client certificate and private key for mutual TLS (mTLS)
-        if settings.KAFKA_SSL_CERTFILE and settings.KAFKA_SSL_KEYFILE:
+        if cert_file and key_file and os.path.isfile(cert_file) and os.path.isfile(key_file):
             logger.info(
-                f"Loading mTLS client certificates: cert='{settings.KAFKA_SSL_CERTFILE}', key='{settings.KAFKA_SSL_KEYFILE}'"
+                f"Loading mTLS client certificates: cert='{cert_file}', key='{key_file}'"
             )
             context.load_cert_chain(
-                certfile=settings.KAFKA_SSL_CERTFILE,
-                keyfile=settings.KAFKA_SSL_KEYFILE
+                certfile=cert_file,
+                keyfile=key_file
             )
+        else:
+            if settings.KAFKA_SECURITY_PROTOCOL == "SSL":
+                logger.warning(
+                    f"mTLS certificates not ready (cert='{cert_file}', key='{key_file}'). "
+                    "Ensure files are present in ./certs, in Render /etc/secrets/, or via Base64 env vars."
+                )
 
         return context
 

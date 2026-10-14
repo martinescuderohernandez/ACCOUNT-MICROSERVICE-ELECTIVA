@@ -1,0 +1,41 @@
+# Git
+.git
+.gitignore
+
+# Environment & Secret files (NEVER copy into Docker image)
+.env
+.env.*
+certs/
+*.pem
+*.cert
+*.key
+
+# Python Virtual Environments & Cache
+mi_entorno/
+mi_entorno1/
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Testing & Coverage
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+pytest.ini
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Docker & Doc files
+Dockerfile
+docker-compose.yml
+.dockerignore
+README.md

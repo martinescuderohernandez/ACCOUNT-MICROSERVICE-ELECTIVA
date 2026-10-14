@@ -1,0 +1,14 @@
+services:
+  account-microservice:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: account_microservice
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      # Mount local certs folder in development (read-only)
+      - ./certs:/app/certs:ro
+    restart: unless-stopped

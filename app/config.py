@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     KAFKA_SSL_CAFILE: Optional[str] = None
     KAFKA_SSL_CERTFILE: Optional[str] = None
     KAFKA_SSL_KEYFILE: Optional[str] = None
+    KAFKA_SSL_CA_BASE64: Optional[str] = None
+    KAFKA_SSL_CERT_BASE64: Optional[str] = None
+    KAFKA_SSL_KEY_BASE64: Optional[str] = None
     KAFKA_SASL_MECHANISM: Optional[str] = None
     KAFKA_SASL_USERNAME: Optional[str] = None
     KAFKA_SASL_PASSWORD: Optional[str] = None
